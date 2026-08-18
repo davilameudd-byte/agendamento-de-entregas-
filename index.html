@@ -301,6 +301,9 @@
         <option value="">Classe XYZ (todas)</option>
         <option value="X">X</option><option value="Y">Y</option><option value="Z">Z</option>
       </select>
+      <select id="fGrupo">
+        <option value="">Grupo (todos)</option>
+      </select>
       <select id="fStatus">
         <option value="critico_atencao">Críticos + Atenção</option>
         <option value="critico">Somente críticos</option>
@@ -777,6 +780,17 @@
     return s;
   }
 
+  // ---------- filtro de grupo (populado dinamicamente a partir dos dados) ----------
+  function populateGrupoFilter(){
+    const sel = document.getElementById('fGrupo');
+    if(!sel) return;
+    const current = sel.value;
+    const grupos = Array.from(new Set(ITEMS.map(i=>i.grupo).filter(Boolean))).sort();
+    sel.innerHTML = '<option value="">Grupo (todos)</option>' +
+      grupos.map(g=>`<option value="${escapeHtml(g)}">${escapeHtml(g)}</option>`).join('');
+    if(grupos.includes(current)) sel.value = current;
+  }
+
   // ---------- KPIs / radar ----------
   function renderRadarAndKpis(){
     const withStatus = ITEMS.map(it=>({...it, _status: statusOf(it), _sobre: isSobreEstoque(it)}));
@@ -825,6 +839,7 @@
   function renderFornGroups(){
     const search = document.getElementById('fSearch').value.trim().toLowerCase();
     const classe = document.getElementById('fClasse').value;
+    const grupo = document.getElementById('fGrupo').value;
     const statusFilter = document.getElementById('fStatus').value;
     const ocultarAgendados = document.getElementById('fOcultarAgendados').checked;
     const agendadoSet = agendadoCodigosSet();
@@ -836,6 +851,7 @@
     else list = list.filter(i=>i._status===statusFilter);
 
     if(classe) list = list.filter(i=>i.classe===classe);
+    if(grupo) list = list.filter(i=>i.grupo===grupo);
     if(search) list = list.filter(i => i.produto.toLowerCase().includes(search) || i.codigo.toLowerCase().includes(search) || (i.fornecedores||[]).join(' ').toLowerCase().includes(search));
 
     let hiddenCount = 0;
@@ -874,7 +890,7 @@
             <div class="forn-item-row" style="cursor:pointer;" data-cod="${escapeHtml(it.codigo)}">
               <div class="forn-item-left">
                 <div class="n">${escapeHtml(it.produto)}</div>
-                <div class="prod-code">${escapeHtml(it.codigo)} · estoque ${fmtNum(it.estoque)} · trânsito ${fmtNum(it.transito)} · consumo/mês ${fmtNum(it.consumo_medio)}</div>
+                <div class="prod-code">${escapeHtml(it.codigo)} · OR ${escapeHtml(it.or_numero||'-')} · estoque ${fmtNum(it.estoque)} · trânsito ${fmtNum(it.transito)} · consumo/mês ${fmtNum(it.consumo_medio)}</div>
               </div>
               <div class="forn-item-right">
                 <span class="status-pill ${it._status}">${fmtNum(diasDe(it))}d</span>
@@ -898,6 +914,7 @@
   function renderSemForn(){
     const search = document.getElementById('fSearch').value.trim().toLowerCase();
     const classe = document.getElementById('fClasse').value;
+    const grupo = document.getElementById('fGrupo').value;
     const statusFilter = document.getElementById('fStatus').value;
     const ocultarAgendados = document.getElementById('fOcultarAgendados').checked;
     const agendadoSet = agendadoCodigosSet();
@@ -909,6 +926,7 @@
     else list = list.filter(i=>i._status===statusFilter);
 
     if(classe) list = list.filter(i=>i.classe===classe);
+    if(grupo) list = list.filter(i=>i.grupo===grupo);
     if(search) list = list.filter(i => i.produto.toLowerCase().includes(search) || i.codigo.toLowerCase().includes(search));
 
     let hiddenCount = 0;
@@ -997,7 +1015,7 @@
             <div class="forn-item-row" style="cursor:pointer;" data-cod="${escapeHtml(it.codigo)}">
               <div class="forn-item-left">
                 <div class="n">${escapeHtml(it.produto)}</div>
-                <div class="prod-code">${escapeHtml(it.codigo)} · estoque ${fmtNum(it.estoque)} · trânsito ${fmtNum(it.transito)} · consumo/mês ${fmtNum(it.consumo_medio)}</div>
+                <div class="prod-code">${escapeHtml(it.codigo)} · OR ${escapeHtml(it.or_numero||'-')} · estoque ${fmtNum(it.estoque)} · trânsito ${fmtNum(it.transito)} · consumo/mês ${fmtNum(it.consumo_medio)}</div>
               </div>
               <div class="forn-item-right">
                 <span class="status-pill sobre">${it.consumo_medio<=0 ? 'sem consumo' : fmtNum(diasDe(it))+'d'}</span>
@@ -1064,7 +1082,7 @@
         <div>
           <span class="status-pill ${sobre ? 'sobre' : status}">${sobre? 'SOBREESTOQUE' : status.toUpperCase()} · ${it.consumo_medio<=0 ? 'sem consumo registrado' : fmtNum(dias)+' dias de cobertura'}</span>
           <h2 style="margin-top:8px;">${escapeHtml(it.produto)}</h2>
-          <div class="prod-code">${escapeHtml(it.codigo)} · Classe ${escapeHtml(it.classe||'-')}</div>
+          <div class="prod-code">${escapeHtml(it.codigo)} · Classe ${escapeHtml(it.classe||'-')} · Grupo ${escapeHtml(it.grupo||'-')} · OR ${escapeHtml(it.or_numero||'-')}</div>
         </div>
         <button class="close-x" onclick="App.closeDrawer()">✕</button>
       </div>
@@ -1087,7 +1105,7 @@
       <div class="section-title">Pedidos em aberto (${it.pedidos_detail.length})</div>
       ${it.pedidos_detail.map(p=>`
         <div class="pedido-row">
-          <span>#${escapeHtml(p.pedido)} · ${escapeHtml(p.fornecedor||'-')}</span>
+          <span>#${escapeHtml(p.pedido||'-')} · OR ${escapeHtml(p.or_numero||'-')} · ${escapeHtml(p.fornecedor||'-')}</span>
           <b>${fmtNum(p.saldo)} un · previsão ${escapeHtml(p.data_envio_of||'-')}</b>
         </div>`).join('')}
       ` : ''}
@@ -1692,6 +1710,7 @@ Equipe de Almoxarifado`;
       ITEMS = newItems;
       window.__lastUpdate = new Date().toLocaleString('pt-BR');
       await storeSet('dados-consolidados', JSON.stringify({items: ITEMS, generated: window.__lastUpdate}));
+      populateGrupoFilter();
       renderGrade(); renderSobreestoque();
       statusEl.className = 'status-line ok';
       statusEl.textContent = `Pronto! ${ITEMS.length} itens recalculados e publicados para toda a equipe.`;
@@ -1706,6 +1725,7 @@ Equipe de Almoxarifado`;
     ITEMS = EMBEDDED.items;
     window.__lastUpdate = null;
     await storeDelete('dados-consolidados');
+    populateGrupoFilter();
     renderGrade(); renderSobreestoque();
     toast('Dados originais do projeto restaurados.', 'ok');
   }
@@ -1774,6 +1794,7 @@ Equipe de Almoxarifado`;
     const cfgRaw = await storeGet('config');
     if(cfgRaw){ try{ CONFIG = {...CONFIG, ...JSON.parse(cfgRaw)}; }catch(e){} }
     fillConfigForm();
+    populateGrupoFilter();
     renderGrade(); renderSobreestoque(); renderAgendamentos();
   }
 
@@ -1801,7 +1822,7 @@ Equipe de Almoxarifado`;
       });
     });
 
-    ['fSearch','fClasse','fStatus','fOcultarAgendados'].forEach(id=>{
+    ['fSearch','fClasse','fGrupo','fStatus','fOcultarAgendados'].forEach(id=>{
       document.getElementById(id).addEventListener('input', renderGrade);
       document.getElementById(id).addEventListener('change', renderGrade);
     });
